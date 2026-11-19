@@ -1,0 +1,86 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 1277 >>
+stream
+BT
+/F1 11 Tf
+50 790 Td
+14 TL
+(SAMPLE TRAVEL DOCUMENT - FOR RAG TESTING) Tj
+T*
+(All details below are fictional examples for testing document search.) Tj
+T*
+() Tj
+T*
+(Trip: Goa Weekend \(Sample\)) Tj
+T*
+(Origin: Pune, Maharashtra) Tj
+T*
+(Destination: Panaji, Goa) Tj
+T*
+(Duration: 3 days / 2 nights) Tj
+T*
+() Tj
+T*
+(Illustrative itinerary:) Tj
+T*
+(Day 1: Arrive in Panaji. Walk through Fontainhas and visit the waterfront.) Tj
+T*
+(Day 2: Visit Old Goa churches in the morning. Spend the afternoon at a nearby beach.) Tj
+T*
+(Day 3: Have breakfast in Panaji, check out, and return to Pune.) Tj
+T*
+() Tj
+T*
+(Sample booking policy:) Tj
+T*
+(The fictional Seaside Guesthouse allows cancellation until 6:00 PM local time two days before check-in.) Tj
+T*
+(After that deadline, the fictional property may charge one night. This is invented sample text, not a real hotel policy.) Tj
+T*
+() Tj
+T*
+(Sample packing notes:) Tj
+T*
+(Carry photo identification, sunscreen, a reusable water bottle, comfortable walking shoes, and any personal medicines.) Tj
+T*
+() Tj
+T*
+(Sample budget \(illustrative only; not live prices\):) Tj
+T*
+(Local transport: INR 2,000) Tj
+T*
+(Food: INR 3,000) Tj
+T*
+(Activities: INR 1,500) Tj
+T*
+(Total sample budget excluding travel and accommodation: INR 6,500) Tj
+T*
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1640
+%%EOF

@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local environments and IDEs
+.venv/
+venv/
+env/
+.idea/
+.vscode/
+
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+secrets/
+credentials.json
+token.json
+token.pickle
+google_oauth_client*.json
+*client_secret*.json
+*.pem
+*.key
+*.p12
+
+# Runtime data, local databases, vectors, checkpoints and logs
+data/**
+!data/.gitkeep
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Temporary files
+*.tmp
+*.bak
