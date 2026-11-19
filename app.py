@@ -15,9 +15,10 @@ def main():
         st.caption("Your private travel workspace")
         page=st.radio("Workspace",["Home","AI chat","Trip planner","Flights, stays & weather","Documents & RAG","Gmail","Saved trips"],label_visibility="collapsed")
         st.divider()
-        st.caption("AI runs with local Ollama. Travel information is labeled by source.")
+        ai_runtime = "local Ollama" if settings.ai_provider.casefold() == "ollama" else "Google Gemini API"
+        st.caption(f"AI runs with {ai_runtime}. Travel information is labeled by source.")
     st.title(settings.app_name)
-    st.caption("Plan thoughtfully with local AI and source-backed travel information.")
+    st.caption("Plan thoughtfully with source-backed travel information and your selected AI provider.")
     if page=="Home": dashboard.render()
     elif page=="AI chat": chat.render()
     elif page=="Trip planner": planner.render()

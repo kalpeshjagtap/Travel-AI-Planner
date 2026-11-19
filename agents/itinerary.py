@@ -88,7 +88,7 @@ class ItineraryAgent(BaseAgent):
             ITINERARY_PROMPT | self.ollama.get_chat_model() | StrOutputParser()
         ).invoke(
             {
-                # Deliberately omit origin: small local models otherwise anchor
+                # Deliberately omit origin: models can otherwise anchor
                 # itinerary activities to the departure city instead of destination.
                 "request": json.dumps({key: request.get(key) for key in ("origin", "destination", "start_date", "end_date", "travelers", "budget", "currency", "preferences", "preferred_regions", "travel_style", "accommodation_preference", "transport_preference", "interests") if request.get(key) is not None}, ensure_ascii=False),
                 "research": json.dumps(_compact_research(research), ensure_ascii=False, default=str),
@@ -112,7 +112,7 @@ class ItineraryAgent(BaseAgent):
 
 
 def _compact_research(value: Any) -> Any:
-    """Trim provider records before they reach a small local model."""
+    """Trim provider records before they reach the configured model."""
     if isinstance(value, dict):
         useful = ("available", "source", "data_type", "days", "listings", "attractions", "budget_allocation", "breakdown", "amount_inr_group", "amount_inr_per_person", "allocation_percent", "name", "category", "latitude", "longitude", "note", "reason")
         return {key: _compact_research(item) for key, item in value.items() if key in useful}

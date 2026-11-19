@@ -1,5 +1,7 @@
 """ChromaDB vector store wrapper."""
 
+from pathlib import Path
+
 from langchain_chroma import Chroma
 
 from config.settings import Settings, get_settings
@@ -11,10 +13,16 @@ class TravelVectorStore:
 
     def __init__(self, settings: Settings | None = None) -> None:
         settings = settings or get_settings()
+        persist_directory = settings.chroma_persist_directory
+        if settings.ai_provider.casefold() == "gemini":
+            # Keep Gemini-vector dimensions separate from an existing local
+            # nomic-embed-text collection when the same checkout changes mode.
+            base = Path(persist_directory)
+            persist_directory = str(base.with_name(base.name + "-gemini"))
         self.store = Chroma(
             collection_name=settings.chroma_collection_name,
             embedding_function=get_embeddings(),
-            persist_directory=settings.chroma_persist_directory,
+            persist_directory=persist_directory,
         )
 
     def as_retriever(self, *, k: int = 4):

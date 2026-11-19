@@ -13,9 +13,13 @@ class Settings(BaseSettings):
 
     app_name: str = "AI Travel Planner"
     environment: str = "development"
+    ai_provider: str = "ollama"
     ollama_base_url: str = "http://localhost:11434"
     ollama_chat_model: str = "llama3.2:1b"
     ollama_embedding_model: str = "nomic-embed-text"
+    google_api_key: SecretStr = SecretStr("")
+    gemini_chat_model: str = "gemini-3.1-flash-lite"
+    gemini_embedding_model: str = "gemini-embedding-2"
     chroma_persist_directory: str = "data/chroma"
     chroma_collection_name: str = "travel_knowledge"
     rag_chunk_size: int = 650
@@ -89,6 +93,8 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_rag_chunk_settings(self) -> "Settings":
         """Ensure the overlap is smaller than the chunk size."""
+        if self.ai_provider.casefold() not in {"ollama", "gemini"}:
+            raise ValueError("AI_PROVIDER must be either 'ollama' or 'gemini'.")
         if self.rag_chunk_overlap >= self.rag_chunk_size:
             raise ValueError("RAG_CHUNK_OVERLAP must be smaller than RAG_CHUNK_SIZE.")
         if self.rag_retrieval_k < 1:
@@ -99,4 +105,20 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     """Return cached settings for the current process."""
-    return Settings()
+    # Streamlit Community Cloud exposes app secrets through st.secrets rather
+    # than process environment variables. Explicit Settings kwargs take
+    # precedence over local .env values and defaults.
+    overrides = {}
+    try:
+        import streamlit as st
+
+        for key in ("AI_PROVIDER", "GOOGLE_API_KEY", "GEMINI_API_KEY", "GEMINI_CHAT_MODEL", "GEMINI_EMBEDDING_MODEL"):
+            if key in st.secrets:
+                overrides[key.lower()] = st.secrets[key]
+        if "google_api_key" not in overrides and "gemini_api_key" in overrides:
+            overrides["google_api_key"] = overrides.pop("gemini_api_key")
+    except Exception:
+        # Outside Streamlit (for example unit tests), environment/.env settings
+        # remain the only source of configuration.
+        pass
+    return Settings(**overrides)

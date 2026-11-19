@@ -18,7 +18,7 @@ CHAT_PROMPT = ChatPromptTemplate.from_messages([
 
 
 class ChatAgent(BaseAgent):
-    """Answers free-form travel questions using only the local Ollama model."""
+    """Answers free-form travel questions using the configured AI provider."""
 
     name = "chat"
 
@@ -36,7 +36,8 @@ class ChatAgent(BaseAgent):
             "request": state.get("user_request", ""),
             "research": json.dumps({key: _compact(value) for key, value in state.get("agent_results", {}).items()}, ensure_ascii=False, default=str),
         }).strip()
-        return {"agent_results": {self.name: {"answer": answer, "data_type": "local AI response"}}}
+        provider = self.ollama.settings.ai_provider.casefold()
+        return {"agent_results": {self.name: {"answer": answer, "data_type": f"{provider} AI response"}}}
 
 
 def _compact(value: Any) -> Any:

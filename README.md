@@ -1,6 +1,6 @@
 # AI Travel Planner
 
-A local-first travel planning application built with Python and Streamlit. It combines local Ollama models, LangGraph specialist agents, ChromaDB retrieval over uploaded documents, filesystem JSON persistence, optional Gmail OAuth, and source-backed public travel data. It does not use SQL, cloud LLMs, paid APIs, billing-enabled travel providers, or scraped booking websites.
+A Python and Streamlit travel planner. On a laptop it uses local Ollama models; an optional Google Gemini API mode is available for hosted Streamlit deployments. It combines LangGraph specialist agents, ChromaDB retrieval over uploaded documents, filesystem JSON persistence, optional Gmail OAuth, and source-backed public travel data. It does not use SQL, paid travel APIs, billing-enabled travel providers, or scraped booking websites. Gemini mode sends prompts and document text to Google's API and is not local-only.
 
 ## Architecture
 
@@ -19,10 +19,10 @@ flowchart TD
   S --> FLA[File]
   S --> EA[Email]
   S --> CA[Chat]
-  IA --> O[Local Ollama llama3.2:1b]
+  IA --> O[Ollama local OR Gemini API]
   CA --> O
   RA --> C[ChromaDB]
-  C --> E[Ollama nomic-embed-text]
+  C --> E[Ollama nomic OR Gemini embeddings]
   FLA --> FS[Filesystem MCP + JSON files]
   EA --> GM[Gmail MCP + Google OAuth]
   FA --> P[Free provider adapters / search links]
@@ -36,8 +36,9 @@ flowchart TD
 ## Technology stack
 
 - Python 3.11 or newer, Streamlit and Streamlit-Folium
-- LangChain and LangGraph for local model access and supervisor-driven workflow
-- Ollama `llama3.2:1b` (generation) and `nomic-embed-text` (embeddings)
+- LangChain and LangGraph for model access and supervisor-driven workflow
+- Local mode: Ollama `llama3.2:1b` (generation) and `nomic-embed-text` (embeddings)
+- Optional hosted mode: `langchain-google-genai` with Gemini chat and embedding models
 - ChromaDB for persistent vector search
 - Official Python MCP SDK for isolated filesystem and Gmail servers
 - JSON, local files, and a filesystem LangGraph checkpointer; no relational database
@@ -52,7 +53,7 @@ flowchart TD
 | Hotel | Finds mapped accommodation records where public data is available; no prices or availability |
 | Weather | Retrieves available Open-Meteo forecast data |
 | Current Location | Uses browser coordinates only after user permission |
-| Itinerary | Drafts an editable date-wise plan with local Ollama |
+| Itinerary | Drafts an editable date-wise plan with the configured Ollama or Gemini model |
 | RAG | Retrieves relevant uploaded travel-document excerpts from ChromaDB |
 | File | Manages travel documents through filesystem MCP and trip records through JSON persistence |
 | Email | Reads permitted Gmail data, creates drafts, and sends only after explicit confirmation |
@@ -63,7 +64,7 @@ The typed shared state carries the current request, conversation messages, resul
 
 ## RAG workflow
 
-Upload PDF, DOCX, TXT, CSV, or Markdown in **Documents & RAG**. The File Agent validates and extracts text, splits it into source-tagged chunks, embeds locally using `nomic-embed-text`, and persists vectors in `data/chroma/`. A question retrieves up to three relevant chunks by default, bounds the prompt context, and asks local `llama3.2:1b` to answer from those sources. The answer includes document source names. No paid embedding endpoint is configured.
+Upload PDF, DOCX, TXT, CSV, or Markdown in **Documents & RAG**. The File Agent validates and extracts text, splits it into source-tagged chunks, embeds using the configured provider, and persists vectors in Chroma. Ollama mode embeds locally with `nomic-embed-text`; Gemini mode sends document chunks and queries to the Google API. A question retrieves up to three relevant chunks by default, bounds the prompt context, and asks the configured model to answer from those sources. Gemini mode uses a separate Chroma directory so its vector dimensions do not mix with local Ollama vectors.
 
 ## MCP integration
 
@@ -101,7 +102,7 @@ ollama pull nomic-embed-text
 ollama list
 ```
 
-The app validates that its base URL is localhost/loopback. It sends no LLM or embedding requests to a cloud provider.
+This is the default laptop mode. It validates that Ollama's base URL is localhost/loopback and sends no LLM or embedding requests to a cloud provider.
 
 ## Python environment setup on Windows
 
@@ -149,10 +150,29 @@ Copy `.env.example` to `.env`. Important local defaults include:
 
 Never add OAuth client files, tokens, or real API keys to source control.
 
+## Deploy to Streamlit Community Cloud
+
+The current code can start in Community Cloud only when it is configured for Gemini; the cloud container cannot reach Ollama running on your laptop at `localhost`. In Streamlit Community Cloud, open the app's **Settings → Secrets** and add TOML like this:
+
+```toml
+AI_PROVIDER = "gemini"
+GOOGLE_API_KEY = "your-Google-AI-Studio-key"
+GEMINI_CHAT_MODEL = "gemini-3.1-flash-lite"
+GEMINI_EMBEDDING_MODEL = "gemini-embedding-2"
+```
+
+Then restart/reboot the app. Do not enable Google billing if you want to remain on free-tier access. Free-tier model availability and quotas can change; inspect Google AI Studio usage. Google states that content submitted on its free tier may be used to improve its products, so do not upload private travel documents in Gemini mode unless you accept that provider handling. See [Gemini pricing and free-tier terms](https://ai.google.dev/gemini-api/docs/pricing).
+
+Streamlit Community Cloud does not guarantee persistence for files written by a running app. Saved trips, uploaded documents, Chroma vectors, API caches, and graph checkpoints may be lost on restart/redeploy. Gmail OAuth uses a local Desktop OAuth/keyring flow and may not work as-is in a hosted container. Use the cloud deployment as a demo unless you add a suitable persistent storage and hosted OAuth design.
+
+The app reads `AI_PROVIDER` and `GOOGLE_API_KEY` from Streamlit secrets. Locally, leave `AI_PROVIDER=ollama` in `.env` to keep the original local-model workflow.
+
 ## Troubleshooting
 
 - **`streamlit` or package import missing:** activate `.venv` and run `python -m pip install -r requirements.txt` with network access.
 - **Ollama connection refused:** start Ollama, verify `ollama list`, then check `OLLAMA_BASE_URL`.
+- **`[Errno 99] Cannot assign requested address` in Streamlit Cloud:** the deployed app is trying to connect to laptop-only Ollama. Set `AI_PROVIDER = "gemini"` and `GOOGLE_API_KEY = "..."` in Streamlit App settings → Secrets, then reboot.
+- **Gemini API key missing:** verify the exact `GOOGLE_API_KEY` secret name, save settings, then reboot the app.
 - **Model not found:** run `ollama pull llama3.2:1b` and `ollama pull nomic-embed-text`.
 - **Slow generation:** close other model-heavy apps, use concise requests, reduce `OLLAMA_NUM_PREDICT`, and allow the first request to load model weights.
 - **Document indexing fails:** ensure Ollama and `nomic-embed-text` are available; confirm format is supported and file is not encrypted/corrupt.
@@ -167,8 +187,8 @@ Never add OAuth client files, tokens, or real API keys to source control.
 - Weather forecasts are available only within the provider forecast horizon; forecasts are not long-range climate predictions.
 - Public geocoding, map tiles, Overpass, OSRM, and Open-Meteo have policies, quotas, and no guaranteed availability. Non-commercial restrictions apply to relevant free tiers.
 - Gmail, OpenTripMap, external data, and browser location are optional and may require permission or credentials.
-- Streamlit session state is temporary UI state; JSON trips/preferences, filesystem documents, Chroma vectors, and graph checkpoints persist locally. Keep backups of `data/` and `secrets/` as appropriate.
-- The app does not use SQL or relational databases, paid API services, cloud LLMs, or scraped booking sites.
+- Streamlit session state is temporary UI state. Local JSON trips/preferences, documents, Chroma vectors, and graph checkpoints persist on the laptop; Community Cloud filesystem writes are not guaranteed to persist.
+- Gemini is an optional cloud API provider. Keep it disabled locally for private, local-only inference.
 
 ## Project layout
 

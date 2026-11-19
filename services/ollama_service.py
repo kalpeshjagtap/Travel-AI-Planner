@@ -1,7 +1,7 @@
-"""Reusable client for local Ollama chat and embedding models.
+"""Reusable local Ollama or Gemini model/embedding clients.
 
-All model traffic is sent to the configured Ollama base URL. This module does
-not configure or fall back to a hosted model provider.
+Local development defaults to Ollama. Streamlit deployments can select Gemini
+explicitly with AI_PROVIDER=gemini and provide GOOGLE_API_KEY through secrets.
 """
 
 from dataclasses import dataclass
@@ -44,30 +44,58 @@ class OllamaService:
     def __init__(self, settings: Settings | None = None, *, timeout: float = 5.0) -> None:
         self.settings = settings or get_settings()
         self.timeout = timeout
-        self._chat_model = None
-        self._embeddings = None
+        self._chat_model: BaseChatModel | None = None
+        self._embeddings: Embeddings | None = None
 
-    def get_chat_model(self) -> ChatOllama:
-        """Create the configured local LangChain chat model."""
+    def get_chat_model(self) -> BaseChatModel:
+        """Create a cached LangChain chat client for the selected provider."""
         if self._chat_model is None:
-            self._chat_model = ChatOllama(
-            model=self.settings.ollama_chat_model,
-            base_url=self.settings.ollama_base_url.rstrip("/"),
-            temperature=0,
-            num_predict=self.settings.ollama_num_predict,
-            client_kwargs={"timeout": self.settings.ollama_request_timeout},
-        )
+            if self.settings.ai_provider.casefold() == "gemini":
+                api_key = self._google_api_key()
+                from langchain_google_genai import ChatGoogleGenerativeAI
+
+                self._chat_model = ChatGoogleGenerativeAI(
+                    model=self.settings.gemini_chat_model,
+                    google_api_key=api_key,
+                    temperature=0,
+                    max_output_tokens=self.settings.ollama_num_predict,
+                )
+            else:
+                self._chat_model = ChatOllama(
+                    model=self.settings.ollama_chat_model,
+                    base_url=self.settings.ollama_base_url.rstrip("/"),
+                    temperature=0,
+                    num_predict=self.settings.ollama_num_predict,
+                    client_kwargs={"timeout": self.settings.ollama_request_timeout},
+                )
         return self._chat_model
 
-    def get_embeddings(self) -> OllamaEmbeddings:
-        """Create the configured local LangChain embedding model."""
+    def get_embeddings(self) -> Embeddings:
+        """Create a cached embedding client for the selected provider."""
         if self._embeddings is None:
-            self._embeddings = OllamaEmbeddings(
-            model=self.settings.ollama_embedding_model,
-            base_url=self.settings.ollama_base_url.rstrip("/"),
-            client_kwargs={"timeout": self.settings.ollama_request_timeout},
-        )
+            if self.settings.ai_provider.casefold() == "gemini":
+                api_key = self._google_api_key()
+                from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+                self._embeddings = GoogleGenerativeAIEmbeddings(
+                    model=self.settings.gemini_embedding_model,
+                    google_api_key=api_key,
+                )
+            else:
+                self._embeddings = OllamaEmbeddings(
+                    model=self.settings.ollama_embedding_model,
+                    base_url=self.settings.ollama_base_url.rstrip("/"),
+                    client_kwargs={"timeout": self.settings.ollama_request_timeout},
+                )
         return self._embeddings
+
+    def _google_api_key(self) -> str:
+        key = self.settings.google_api_key.get_secret_value().strip()
+        if not key:
+            raise OllamaServiceError(
+                "Gemini is selected, but GOOGLE_API_KEY is missing. Add it to Streamlit App settings > Secrets."
+            )
+        return key
 
     def validate_connection(self, *, require_models: bool = True) -> OllamaHealth:
         """Check the local server and optionally verify both configured models.
@@ -76,6 +104,16 @@ class OllamaService:
         load models or send prompts. Model names are compared without the
         default ``:latest`` tag when the configured name omits a tag.
         """
+        if self.settings.ai_provider.casefold() == "gemini":
+            try:
+                self._google_api_key()
+            except OllamaServiceError as exc:
+                return OllamaHealth(available=False, base_url="Google Gemini API", error=str(exc))
+            return OllamaHealth(
+                available=True, base_url="Google Gemini API",
+                installed_models=(self.settings.gemini_chat_model, self.settings.gemini_embedding_model),
+            )
+
         base_url = self.settings.ollama_base_url.rstrip("/")
         try:
             response = httpx.get(f"{base_url}/api/tags", timeout=self.timeout)
